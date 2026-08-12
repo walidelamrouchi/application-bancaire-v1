@@ -1,0 +1,6 @@
+{
+  "name": "Banking Admin Console",
+  "description": "Full-stack MVP prototype dashboard for client management, account operations, cards control, and transaction simulation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
