@@ -402,9 +402,16 @@ export default function App() {
   //   return { success: true };
   // };
 
-  // const handleQuickDeposit = (accountId: number, amount: number) => {
-  //   handleExecuteTransaction("DEPOT", amount, accountId);
-  // };
+  const handleQuickDeposit = (accountId: number, amount: number , type : string) => {
+    handleExecuteTransaction(
+      {
+        type: type,
+        amount: amount,
+        accountBankingDes: {id : accountId},
+     
+      }
+      );
+  };
 
   // // --- NAVIGATIONAL ROUTING SHORTCUTS ---
   // const handleViewAccounts = (clientId: number) => {
@@ -455,7 +462,7 @@ export default function App() {
                 cards={cards}
                 transactions={transactions}
                 onNavigate={setTab}
-                //onQuickDeposit={handleQuickDeposit}
+                onQuickDeposit={handleQuickDeposit}
               />
             )}
 

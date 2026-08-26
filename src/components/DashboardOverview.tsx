@@ -39,7 +39,7 @@ export default function DashboardOverview({
   // Get recent 5 transactions
   const recentTransactions = [...transactions]
     .sort((a, b) => new Date(b.dateOperation).getTime() - new Date(a.dateOperation).getTime())
-    .slice(0, 5);
+    .slice(0, 7);
 
   const getAccountRIB = (id: number) => {
     const acc = accounts.find(a => a.id === id);
@@ -188,18 +188,18 @@ export default function DashboardOverview({
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <button
-                      onClick={() => onQuickDeposit(account.id, 1000)}
+                      onClick={() => onQuickDeposit(account.id, 1000 , "DEPOT")}
                       id={`btn-quick-dep-1000-${account.id}`}
                       className="bg-[#27a644]/10 hover:bg-[#27a644]/20 text-[#27a644] text-[10px] font-mono px-2 py-1 rounded border border-[#27a644]/20 transition-all"
                     >
                       +1k {account.currency}
                     </button>
                     <button
-                      onClick={() => onQuickDeposit(account.id, 5000)}
+                      onClick={() => onQuickDeposit(account.id, 1000 , "RETRAIT")}
                       id={`btn-quick-dep-5000-${account.id}`}
                       className="bg-[#27a644]/10 hover:bg-[#27a644]/20 text-[#27a644] text-[10px] font-mono px-2 py-1 rounded border border-[#27a644]/20 transition-all"
                     >
-                      +5k {account.currency}
+                      -1k {account.currency}
                     </button>
                   </div>
                 </div>
