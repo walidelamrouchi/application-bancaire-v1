@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Client, AccountBanking, CardBanking } from "../types";
+import { Client, AccountBanking, CardBanking, CardBankingRequest } from "../types";
 import { Search, Plus, Edit2, Trash2, X, AlertCircle, CreditCard, Key } from "lucide-react";
 
 interface CardsPageProps {
@@ -8,8 +8,8 @@ interface CardsPageProps {
   clients: Client[];
   accountIdFilter: number | null;
   onClearFilter: () => void;
-  onAddCard: (card: Omit<CardBanking, "id">) => void;
-  onUpdateCard: (card: CardBanking) => void;
+  onAddCard: (card: CardBankingRequest) => void;
+  onUpdateCard: (id: number, card: CardBankingRequest) => void;
   onDeleteCard: (id: number) => void;
 }
 
@@ -45,12 +45,12 @@ export default function CardsPage({
 
   const handleOpenCreate = () => {
     setEditingCard(null);
-    setAccountId(accounts[0]?.id || 0);
+    setAccountId(accounts[0].id || 0);
     setPAN(generateRandomPAN());
     // Auto set expiration date to 4 years in the future (YYYY-MM-DD)
     const futureDate = new Date();
     futureDate.setFullYear(futureDate.getFullYear() + 4);
-    setDateExp(futureDate.toISOString().slice(0, 10));
+    setDateExp(futureDate.toISOString().split("T")[0]);
     setCeilingDay(10000);
     setIsActive(true);
     setErrorMessage("");
@@ -59,7 +59,7 @@ export default function CardsPage({
 
   const handleOpenEdit = (card: CardBanking) => {
     setEditingCard(card);
-    setAccountId(card.accountId);
+    setAccountId(card.accountBanking?.id);
     setPAN(card.PAN);
     setDateExp(card.dateExp);
     setCeilingDay(card.ceilingDay);
@@ -92,9 +92,8 @@ export default function CardsPage({
     }
 
     if (editingCard) {
-      onUpdateCard({
-        ...editingCard,
-        accountId,
+      onUpdateCard( editingCard.id, {
+        accountBanking: { id: accountId },
         PAN,
         dateExp,
         ceilingDay,
@@ -107,7 +106,7 @@ export default function CardsPage({
         return;
       }
       onAddCard({
-        accountId,
+        accountBanking: { id: accountId },
         PAN,
         dateExp,
         ceilingDay,
@@ -117,34 +116,41 @@ export default function CardsPage({
 
     setIsFormOpen(false);
   };
+  //test
+
+ 
 
   const getAccountRIB = (id: number) => {
-    const acc = accounts.find(a => a.id === id);
-    return acc ? acc.RIB : "RIB inconnu";
+      const acc = accounts?.find(a => a.id === id);
+      return acc ? acc.RIB : "RIB inconnu";
   };
 
   const getCardOwnerName = (card: CardBanking) => {
-    const acc = accounts.find(a => a.id === card.accountId);
-    if (!acc) return "Inconnu";
-    const client = clients.find(c => c.id === acc.clientId);
-    return client ? client.name : "Inconnu";
+    try{
+      const acc = accounts?.find(a => a.id === card.accountBanking.id);
+      if (!acc) return "Inconnu";
+      const client = clients?.find(c => c.id === acc.client.id);
+      return client ? client.name : "Inconnu";
+    }
+    catch(e){
+      console.error("mal9inach had Card aslan asahbi:", e);
+      return "Inconnu";
+    }
   };
 
   // Filter and search
   const filteredCards = cards.filter((card) => {
     // 1. Account Filter
-    if (accountIdFilter !== null && card.accountId !== accountIdFilter) {
+    if (accountIdFilter !== null && card.accountBanking?.id !== accountIdFilter) {
       return false;
     }
-
     // 2. Search query matches PAN or linked RIB
-    const rib = getAccountRIB(card.accountId);
+    const rib = getAccountRIB(card.accountBanking?.id);
     const owner = getCardOwnerName(card).toLowerCase();
     const matchesSearch =
       card.PAN.includes(search) ||
-      rib.includes(search) ||
+      rib.includes(search) || 
       owner.includes(search.toLowerCase());
-
     return matchesSearch;
   });
 
@@ -154,6 +160,7 @@ export default function CardsPage({
   const formatPAN = (num: string) => {
     return num.replace(/(\d{4})/g, "$1 ").trim();
   };
+  
 
   return (
     <div className="space-y-6 animate-fade-in" id="cards-crud-page">
@@ -238,7 +245,8 @@ export default function CardsPage({
                   <div className="space-y-0.5">
                     <p className="text-[7px] text-[#62666d] uppercase">CARD OWNER</p>
                     <p className="text-[9px] font-mono text-[#f7f8f8] truncate max-w-[80px]">
-                      {accountId ? getCardOwnerName({ accountId } as CardBanking) : "TITULAIRE"}
+                      TITULAIRE
+                      {/* {accountId ? getCardOwnerName({ accountId } as CardBanking) : "TITULAIRE"} */}
                     </p>
                   </div>
                   <div className="space-y-0.5 text-right">
@@ -286,7 +294,7 @@ export default function CardsPage({
                   >
                     <option value={0}>-- Sélectionner un RIB actif --</option>
                     {accounts.map((acc) => {
-                      const owner = clients.find(c => c.id === acc.clientId)?.name || "Inconnu";
+                      const owner = clients.find(c => c.id === acc.client?.id)?.name || "Inconnu";
                       return (
                         <option key={acc.id} value={acc.id} disabled={!acc.isActive}>
                           {owner} — {acc.RIB.slice(0, 4)}...{acc.RIB.slice(-4)} {acc.isActive ? "" : "(Bloqué)"}
@@ -413,7 +421,7 @@ export default function CardsPage({
             </thead>
             <tbody>
               {filteredCards.map((card) => {
-                const rib = getAccountRIB(card.accountId);
+                const rib = getAccountRIB(card.accountBanking?.id);
                 const ownerName = getCardOwnerName(card);
                 const isCardExpired = new Date(card.dateExp) < new Date();
 
@@ -433,7 +441,7 @@ export default function CardsPage({
                     <td className="p-3 text-xs font-medium text-[#f7f8f8]">{ownerName}</td>
                     <td className="p-3">
                       <span className="font-mono text-xs text-[#8a8f98] block">{rib}</span>
-                      <span className="text-[10px] text-[#62666d] font-mono">ACCOUNT-{card.accountId}</span>
+                      <span className="text-[10px] text-[#62666d] font-mono">ACCOUNT-{card.accountBanking?.id}</span>
                     </td>
                     <td className="p-3 text-xs">
                       <span className={`font-mono ${isCardExpired ? "text-[#eb5757] font-semibold" : "text-[#8a8f98]"}`}>

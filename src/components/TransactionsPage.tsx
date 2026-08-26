@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Client, AccountBanking, Transaction } from "../types";
+import { Client, AccountBanking, Transaction, TransactionRequest } from "../types";
 import { Search, ArrowRightLeft, ArrowUpRight, ArrowDownLeft, X, AlertCircle, CheckCircle2, History } from "lucide-react";
+import { ref } from "process";
 
 interface TransactionsPageProps {
   transactions: Transaction[];
@@ -9,10 +10,7 @@ interface TransactionsPageProps {
   accountIdFilter: number | null;
   onClearFilter: () => void;
   onExecuteTransaction: (
-    type: "DEPOT" | "RETRAIT" | "VIREMENT",
-    amount: number,
-    destinationId: number,
-    sourceId?: number
+    transaction: TransactionRequest
   ) => { success: boolean; error?: string };
 }
 
@@ -25,7 +23,7 @@ export default function TransactionsPage({
   onExecuteTransaction,
 }: TransactionsPageProps) {
   // Simulator State
-  const [txType, setTxType] = useState<"DEPOT" | "RETRAIT" | "VIREMENT">("DEPOT");
+  const [type, setType] = useState<"DEPOT" | "RETRAIT" | "VIREMENT">("DEPOT");
   const [amount, setAmount] = useState<number>(0);
   const [desAccountId, setDesAccountId] = useState<number>(0);
   const [srcAccountId, setSrcAccountId] = useState<number>(0);
@@ -39,11 +37,25 @@ export default function TransactionsPage({
 
   // Helper to get client name
   const getClientNameByAccountId = (id: number) => {
-    const acc = accounts.find(a => a.id === id);
-    if (!acc) return "Inconnu";
-    const client = clients.find(c => c.id === acc.clientId);
-    return client ? client.name : "Inconnu";
+    try {
+      const acc = accounts.find(a => a.id === id);
+      if (!acc) return "Inconnu";
+      const client = clients.find(c => c.id === acc.client.id);
+      return client ? client.name : "Inconnu";
+    } catch (e) {
+      console.error("Error finding client for account:", e);
+      return "Inconnu";
+    }
   };
+  console.log("destAccountId:", desAccountId, "srcAccountId:", srcAccountId, "amount:", amount);
+  console.log("accounts transactions:", accounts);
+
+  // const getClientNameByAccountId = (id: number) => {
+  //   const acc = accounts.find(a => a.id === id);
+  //   if (!acc) return "Inconnu";
+  //   const client = clients.find(c => c.id === acc.client.id);
+  //   return client ? client.name : "Inconnu";
+  // };
 
   const getAccountRIB = (id: number) => {
     const acc = accounts.find(a => a.id === id);
@@ -66,27 +78,33 @@ export default function TransactionsPage({
       return;
     }
 
-    if (txType === "VIREMENT" && !srcAccountId) {
+    if (type === "VIREMENT" && !srcAccountId) {
       setErrorFeedback("InvalidOperationException: Compte d'origine (source) obligatoire pour un virement.");
       return;
     }
 
-    if (txType === "VIREMENT" && srcAccountId === desAccountId) {
+    if (type === "VIREMENT" && srcAccountId === desAccountId) {
       setErrorFeedback("InvalidOperationException: Les comptes source et destinataire doivent être différents.");
       return;
     }
 
     // Execute through parent unified state machine
     const res = onExecuteTransaction(
-      txType,
-      amount,
-      desAccountId,
-      txType === "VIREMENT" ? srcAccountId : undefined
+      {
+        type,
+        amount,
+        reference: `TXN-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        dateOperation: new Date().toISOString(),
+        accountBankingDes: { id: desAccountId },
+        isValid: true,
+        accountBankingSrc: type === "VIREMENT" ? { id: srcAccountId } : undefined,
+      }
     );
 
     if (res.success) {
       setSuccessFeedback(`Transaction validée et enregistrée avec succès ! Les comptes ont été débités/crédités.`);
       setAmount(0); // Reset amount on success
+      console.log("Transaction executed successfully:", { type, amount, desAccountId, srcAccountId  });
       
       // Auto-clear success message after 5 seconds
       setTimeout(() => setSuccessFeedback(""), 5000);
@@ -99,7 +117,7 @@ export default function TransactionsPage({
   const filteredTransactions = transactions.filter((tx) => {
     // 1. Account RIB Filter from prop
     if (accountIdFilter !== null) {
-      if (tx.accountBankingDesId !== accountIdFilter && tx.accountBankingSrcId !== accountIdFilter) {
+      if (tx.accountBankingDes.id !== accountIdFilter && tx.accountBankingSrc.id !== accountIdFilter) {
         return false;
       }
     }
@@ -107,9 +125,9 @@ export default function TransactionsPage({
     // 2. Search textbox matching RIB, reference or Client name
     const matchesSearch =
       tx.reference.toLowerCase().includes(search.toLowerCase()) ||
-      getAccountRIB(tx.accountBankingDesId).includes(search) ||
-      (tx.accountBankingSrcId && getAccountRIB(tx.accountBankingSrcId).includes(search)) ||
-      getClientNameByAccountId(tx.accountBankingDesId).toLowerCase().includes(search.toLowerCase());
+      getAccountRIB(tx.accountBankingDes.id).includes(search) ||
+      (tx.accountBankingSrc.id && getAccountRIB(tx.accountBankingSrc.id).includes(search)) ||
+      getClientNameByAccountId(tx.accountBankingDes.id).toLowerCase().includes(search.toLowerCase());
 
     return matchesSearch;
   });
@@ -189,12 +207,12 @@ export default function TransactionsPage({
                       type="button"
                       id={`tab-tx-type-${type}`}
                       onClick={() => {
-                        setTxType(type as any);
+                        setType(type as any);
                         setErrorFeedback("");
                         setSuccessFeedback("");
                       }}
                       className={`py-1.5 rounded-[4px] text-[10px] font-semibold transition-all uppercase ${
-                        txType === type
+                        type === type
                           ? "bg-[#383b3f] text-[#f7f8f8] border border-white/5 shadow-sm"
                           : "text-[#62666d] hover:text-[#8a8f98]"
                       }`}
@@ -208,7 +226,7 @@ export default function TransactionsPage({
               </div>
 
               {/* Source Account (Shown only for transfers / VIREMENT) */}
-              {txType === "VIREMENT" && (
+              {type === "VIREMENT" && (
                 <div className="space-y-1.5 animate-slide-down">
                   <label className="block text-[10px] font-mono font-medium text-[#8a8f98] uppercase">Compte d'origine (Source)</label>
                   <select
@@ -234,9 +252,9 @@ export default function TransactionsPage({
               {/* Destination Account (all transactions have this) */}
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-mono font-medium text-[#8a8f98] uppercase">
-                  {txType === "DEPOT"
+                  {type === "DEPOT"
                     ? "Compte Bénéficiaire (Crédit)"
-                    : txType === "RETRAIT"
+                    : type === "RETRAIT"
                     ? "Compte Titulaire (Débit)"
                     : "Compte Destinataire (Crédit)"}
                 </label>
@@ -248,9 +266,9 @@ export default function TransactionsPage({
                   required
                 >
                   <option value={0}>
-                    {txType === "DEPOT"
+                    {type === "DEPOT"
                       ? "-- Sélectionner le compte à créditer --"
-                      : txType === "RETRAIT"
+                      : type === "RETRAIT"
                       ? "-- Sélectionner le compte à débiter --"
                       : "-- Sélectionner le compte bénéficiaire --"}
                   </option>
@@ -291,19 +309,19 @@ export default function TransactionsPage({
                 id="form-tx-btn-submit"
                 className="w-full bg-[#e4f222] text-[#08090a] text-xs font-[510] tracking-tight py-2 rounded-[6px] hover:bg-[#f0ff44] transition-all shadow-card uppercase flex items-center justify-center gap-1.5"
               >
-                {txType === "DEPOT" && (
+                {type === "DEPOT" && (
                   <>
                     <ArrowDownLeft size={14} />
                     Valider le Dépôt
                   </>
                 )}
-                {txType === "RETRAIT" && (
+                {type === "RETRAIT" && (
                   <>
                     <ArrowUpRight size={14} />
                     Valider le Retrait
                   </>
                 )}
-                {txType === "VIREMENT" && (
+                {type === "VIREMENT" && (
                   <>
                     <ArrowRightLeft size={14} />
                     Valider le Virement
@@ -351,8 +369,8 @@ export default function TransactionsPage({
                 </thead>
                 <tbody>
                   {sortedTransactions.map((tx) => {
-                    const desAccount = accounts.find(a => a.id === tx.accountBankingDesId);
-                    const srcAccount = tx.accountBankingSrcId ? accounts.find(a => a.id === tx.accountBankingSrcId) : null;
+                    const desAccount = accounts.find(a => a.id === tx.accountBankingDes.id);
+                    const srcAccount = tx.accountBankingSrc?.id ? accounts.find(a => a?.id === tx.accountBankingSrc?.id) : null;
                     const currency = desAccount?.currency || "MAD";
 
                     return (
@@ -386,14 +404,14 @@ export default function TransactionsPage({
                         </td>
                         <td className="p-3 text-xs">
                           <div className="flex flex-col">
-                            <span className="text-[#f7f8f8]">{getClientNameByAccountId(tx.accountBankingDesId)}</span>
-                            <span className="font-mono text-[10px] text-[#8a8f98]">{getAccountRIB(tx.accountBankingDesId)}</span>
+                            <span className="text-[#f7f8f8]">{getClientNameByAccountId(tx.accountBankingDes.id)}</span>
+                            <span className="font-mono text-[10px] text-[#8a8f98]">{getAccountRIB(tx.accountBankingDes.id)}</span>
                           </div>
                         </td>
                         <td className="p-3 text-xs text-[#8a8f98]">
                           {srcAccount ? (
                             <div className="flex flex-col">
-                              <span className="text-[#f7f8f8]">{getClientNameByAccountId(tx.accountBankingSrcId!)}</span>
+                              <span className="text-[#f7f8f8]">{getClientNameByAccountId(tx.accountBankingSrc.id)}</span>
                               <span className="font-mono text-[10px] text-[#8a8f98]">{srcAccount.RIB}</span>
                             </div>
                           ) : (

@@ -25,23 +25,31 @@ export interface AccountBanking {
 }
 // Ce que le formulaire ENVOIE au backend (création/modification)
 
-export interface AccountBankingRequest {
-  clientId: number;
-  RIB: string;
-  sold: number;
-  type: "COURANT" | "EPARGNE";
-  currency: "MAD" | "EUR" | "USD";
-  isActive: boolean;
-}
+  export interface AccountBankingRequest {
+    clientId: number;
+    RIB: string;
+    sold: number;
+    type: "COURANT" | "EPARGNE";
+    currency: "MAD" | "EUR" | "USD";
+    isActive: boolean;
+  }
 
-export interface CardBanking {
-  id: number;
-  PAN: string; // Primary Account Number (uppercase)
-  dateExp: string; // YYYY-MM-DD
-  ceilingDay: number; // Plafond journalier
-  isActive: boolean;
-  accountId: number; // Linked Account id
-}
+  export interface CardBanking {
+    id: number;
+    PAN: string; // Primary Account Number (uppercase)
+    dateExp: string; // YYYY-MM-DD
+    ceilingDay: number; // Plafond journalier
+    isActive: boolean;
+    accountBanking: AccountBanking; // Linked Account id
+  }
+  export interface CardBankingRequest {
+    PAN: string; // Primary Account Number (uppercase)
+    dateExp: string; // YYYY-MM-DD
+    ceilingDay: number; // Plafond journalier
+    isActive: boolean;
+    accountBanking: {id : number}; // envoie l'id du compte bancaire lié, pas l'objet complet 
+    //accountId: number; //Jackson ne sait pas où le mettre
+  }
 
 export interface Transaction {
   id: number;
@@ -50,6 +58,15 @@ export interface Transaction {
   reference: string; // Automatically generated reference e.g., TXN-20260701-A3F9K2
   dateOperation: string; // ISO String
   isValid: boolean;
-  accountBankingDesId: number; // Destination Account ID (all transactions have this)
-  accountBankingSrcId?: number; // Source Account ID (only used for transfers/VIREMENT)
+  accountBankingSrc?: AccountBanking; // Source Account (only used for transfers/VIREMENT)
+  accountBankingDes: AccountBanking; // Destination Account (only used for transfers/VIREMENT)
+}
+export interface TransactionRequest {
+  type: "DEPOT" | "RETRAIT" | "VIREMENT";
+  amount: number;
+  reference: string; // Automatically generated reference e.g., TXN-20260701-A3F9K2
+  dateOperation: string; // ISO String
+  isValid: boolean;
+  accountBankingDes: {id : number}; // Destination Account ID (all transactions have this)
+  accountBankingSrc?: {id : number}; // Source Account ID (only used for transfers/VIREMENT)
 }

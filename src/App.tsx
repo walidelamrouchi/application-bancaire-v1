@@ -12,7 +12,7 @@ import AccountsPage from "./components/AccountsPage";
 import CardsPage from "./components/CardsPage";
 import TransactionsPage from "./components/TransactionsPage";
 
-import { Client, AccountBanking, CardBanking, Transaction, AccountBankingRequest } from "./types";
+import { Client, AccountBanking, CardBanking, Transaction, AccountBankingRequest, CardBankingRequest, TransactionRequest } from "./types";
 import {
   INITIAL_CLIENTS,
   INITIAL_ACCOUNTS,
@@ -52,6 +52,8 @@ import {
   createTransaction,
   getTransactionsByAccountId,
 } from "./api/transactionApi";
+import e from "express";
+import { error } from "console";
 
 // Helper: Generates unique standard compliant transaction references
 function generateTxReference(): string {
@@ -101,6 +103,7 @@ export default function App() {
   }, []);
       console.log("accounts:" ,accounts[0]?.client)
       console.log("clients" , clients)
+      console.log("cards" , cards)
   // // 2. Automatically sync database changes to localStorage
   // useEffect(() => {
   //   if (clients.length > 0) {
@@ -248,7 +251,7 @@ export default function App() {
   };
 
   // --- CARD CRUD ---
-  const handleAddCard = (newCardData: Omit<CardBanking, "id">) => {
+  const handleAddCard = (newCardData: Omit<CardBankingRequest, "id">) => {
     createCard(newCardData).then((response) => {
       const newCard = response.data;
       const updated = [...cards, newCard];
@@ -257,8 +260,8 @@ export default function App() {
     });
   };
 
-  const handleUpdateCard = (updated: CardBanking) => {
-    updateCard(updated.id, updated).then((response) => {
+  const handleUpdateCard = (id: number, updated: CardBankingRequest) => {
+    updateCard(id, updated).then((response) => {
       const updatedCard = response.data;
       const updatedList = cards.map((c) => (c.id === updatedCard.id ? updatedCard : c));
       setCards(updatedList);
@@ -266,40 +269,64 @@ export default function App() {
     });
   };
 
-  // const handleDeleteCard = (id: number) => {
-  //   if (
-  //     window.confirm("Êtes-vous sûr de vouloir annuler cette carte bancaire ?")
-  //   ) {
-  //     const updated = cards.filter((c) => c.id !== id);
-  //     setCards(updated);
-  //     localStorage.setItem("bank_cards", JSON.stringify(updated));
-  //   }
-  // };
+   const handleDeleteCard = (id: number) => {
+    if (
+      window.confirm("Êtes-vous sûr de vouloir annuler cette carte bancaire ?")
+    ) {
+      deleteCard(id).then(()=>{
+        const update = cards.filter((c) => c.id != id);
+        setCards(update);
+      }); 
+    }
+  };
 
   // --- TRANSACTION ENGINE (Business exception checks mirroring Spring Boot) ---
-  // const handleExecuteTransaction = (
-  //   type: "DEPOT" | "RETRAIT" | "VIREMENT",
-  //   amount: number,
-  //   destinationId: number,
-  //   sourceId?: number,
-  // ): { success: boolean; error?: string } => {
-  //   const desAcc = accounts.find((a) => a.id === destinationId);
-  //   if (!desAcc) {
-  //     return { success: false, error: `ResourceNotFoundException: Compte destinataire introuvable (ID: ${destinationId}).` };
-  //   }
-  //   if (!desAcc.isActive) {
-  //     return { success: false, error: `InvalidOperationException: Échec de transaction. Le compte destinataire [RIB: ${desAcc.RIB}] est suspendu/bloqué.` };
-  //   }
+  const handleExecuteTransaction = (transaction : Omit<TransactionRequest, "id">
+  ): { success: boolean; error?: string } => {
+    const desAcc = accounts.find((a) => a.id === transaction.accountBankingDes.id);
+    const srcAcc = transaction.accountBankingSrc? accounts.find(a => a.id === transaction.accountBankingSrc?.id):  undefined;
+    if (!desAcc) {
+      return { success: false, error: `ResourceNotFoundException: Compte destinataire introuvable (ID: ${transaction.accountBankingDes.id}).` };
+    }
+    if (!desAcc.isActive) {
+      return { success: false, error: `InvalidOperationException: Échec de transaction. Le compte destinataire [RIB: ${desAcc.RIB}] est suspendu/bloqué.` };
+    }
+    if(transaction.type === "VIREMENT" && transaction.amount > srcAcc?.sold){
+      return {success: false, error: `solde insuffisant sur le compte ${srcAcc?.RIB} pour effectuer le virement.`}
+    }
+    if(transaction.type === "RETRAIT" && transaction.amount > desAcc.sold){
+      return {success: false, error: `solde insuffisant sur le compte ${desAcc?.RIB} pour effectuer le retrait.`}
+    }
 
-  //   const desClient = clients.find((c) => c.id === desAcc.clientId);
-  //   if (!desClient) {
-  //     return { success: false, error: `ResourceNotFoundException: Échec de transaction. Titulaire du compte destinataire introuvable.` };
-  //   }
-  //   if (!desClient.isActive) {
-  //     return { success: false, error: `InvalidOperationException: Transaction refusée. Le titulaire du compte [CIN: ${desClient.CIN}] est inactif.` };
-  //   }
+    const desClient = clients.find((c) => c.id === desAcc.client.id);
+    if (!desClient) {
+      return { success: false, error: `ResourceNotFoundException: Échec de transaction. Titulaire du compte destinataire introuvable.` };
+    }
+    if (!desClient.isActive) {
+      return { success: false, error: `InvalidOperationException: Transaction refusée. Le titulaire du compte [CIN: ${desClient.CIN}] est inactif.` };
+    }
+    console.log("Executing transaction nchof wach kayn chi mochkil:", transaction);
+    createTransaction({
+      type: transaction.type,
+      amount: transaction.amount,
+      reference: generateTxReference(),
+      dateOperation: new Date().toISOString(),
+      isValid: true,
+      accountBankingDes: transaction.accountBankingDes,
+      accountBankingSrc: transaction.accountBankingSrc,
+    }).then((response) => {
+      const newTx = response.data;
+      const updatedTransactions = [newTx, ...transactions];
+      setTransactions(updatedTransactions);
+    }).catch((err) => {
+      console.error("Transaction creation error:", err);
+    });
+    
 
-  //   let updatedAccounts = [...accounts];
+    return { success: true };
+  }
+
+    // let updatedAccounts = [...accounts];
 
   //   if (type === "DEPOT") {
   //     updatedAccounts = updatedAccounts.map((a) => (a.id === destinationId ? { ...a, sold: a.sold + amount } : a));
@@ -445,31 +472,31 @@ export default function App() {
             {currentTab === "accounts" && (
               <AccountsPage
                  accounts={accounts}
-                // clients={clients}
-                // clientIdFilter={selectedClientIdFilter}
-                // onClearFilter={() => setSelectedClientIdFilter(null)}
-                // onAddAccount={handleAddAccount}
-                // onUpdateAccount={handleUpdateAccount}
-                // onDeleteAccount={handleDeleteAccount}
-                // onViewCards={handleViewCards}
+                 clients={clients}
+                 clientIdFilter={selectedClientIdFilter}
+                 onClearFilter={() => setSelectedClientIdFilter(null)}
+                 onAddAccount={handleAddAccount}
+                 onUpdateAccount={handleUpdateAccount}
+                 onDeleteAccount={handleDeleteAccount}
+                 //onViewCards={handleViewCards}
                 // onViewTransactions={handleViewTransactions}
               />
             )}
 
-            {/* {currentTab === "cards" && (
-              // <CardsPage
-              //   // cards={cards}
-              //   // accounts={accounts}
-              //   // clients={clients}
-              //   // accountIdFilter={selectedAccountIdFilter}
-              //   // onClearFilter={() => setSelectedAccountIdFilter(null)}
-              //   // onAddCard={handleAddCard}
-              //   // onUpdateCard={handleUpdateCard}
-              //   // //onDeleteCard={handleDeleteCard}
-              // />
-            )} */}
+            {currentTab === "cards" && (
+              <CardsPage
+                cards={cards}
+                accounts={accounts}
+                clients={clients}
+                accountIdFilter={selectedAccountIdFilter}
+                onClearFilter={() => setSelectedAccountIdFilter(null)}
+                onAddCard={handleAddCard}
+                onUpdateCard={handleUpdateCard}
+                onDeleteCard={handleDeleteCard}
+              />
+            )}
 
-            {/* {currentTab === "transactions" && (
+            {currentTab === "transactions" && (
               <TransactionsPage
                 transactions={transactions}
                 accounts={accounts}
@@ -478,7 +505,7 @@ export default function App() {
                 onClearFilter={() => setSelectedAccountIdFilter(null)}
                 onExecuteTransaction={handleExecuteTransaction}
               />
-            )} */}
+            )}
           </div>
         </main>
       </div>

@@ -6,29 +6,29 @@ import { getAllAccounts  ,getAccountById , updateAccount , createAccount , searc
 interface AccountsPageProps {
   accounts: AccountBanking[];
   clients: Client[];
-  // clientIdFilter: number | null;
-  // onClearFilter: () => void;
-   onAddAccount: (account: AccountBankingRequest) => void;
-  // onUpdateAccount: (id: number, account: AccountBankingRequest) => AccountBanking;
-  // onDeleteAccount: (id: number) => void;
-  // onViewCards: (accountId: number) => void;
-  // onViewTransactions: (accountId: number) => void;
+    clientIdFilter: number | null;
+    onClearFilter: () => void;
+    onAddAccount: (account: AccountBankingRequest) => void;
+    onUpdateAccount: (id: number, account: AccountBankingRequest) => AccountBanking;
+    onDeleteAccount: (id: number) => void;
+    // onViewCards: (accountId: number) => void;
+    // onViewTransactions: (accountId: number) => void;
 }
 
 export default function AccountsPage({
   accounts,
   clients,
-  // clientIdFilter,
-  // onClearFilter,
-   onAddAccount,
-  // onUpdateAccount,
-  // onDeleteAccount,
+  clientIdFilter,
+  onClearFilter,
+  onAddAccount,
+  onUpdateAccount,
+  onDeleteAccount,
   // onViewCards,
   // onViewTransactions,
 }: AccountsPageProps) {
   const [search, setSearch] = useState(""); // set value for search input
   const [isFormOpen, setIsFormOpen] = useState(false);
-  //const [editingAccount, setEditingAccount] = useState<AccountBanking | null>(null);
+  const [editingAccount, setEditingAccount] = useState<AccountBanking | null>(null);
 
   // Form Fields State
   const [clientId, setClientId] = useState<number>(0);
@@ -39,16 +39,28 @@ export default function AccountsPage({
   const [isActive, setIsActive] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
-  // Helper: auto-generate a valid-looking 24-digit RIB
-  // const generateRandomRIB = () => {
-  //   let rib = "00778000";
-  //   for (let i = 0; i < 16; i++) {
-  //     rib += Math.floor(Math.random() * 10).toString();
-  //   }
-  //   return rib;
-  // };
+  //Helper: auto-generate a valid-looking 24-digit RIB
+  const generateRandomRIB = () => {
+    let rib = "00778000";
+    for (let i = 0; i < 16; i++) {
+      rib += Math.floor(Math.random() * 10).toString();
+    }
+    return rib;
+  };
 
   const handleOpenCreateAccount = ()=>{
+    setClientId(clients[0].id || 0);
+    setRIB("RIB");
+    setSold(5000); // 5000 initial balance as a nice default
+    setType("COURANT");
+    setCurrency("MAD");
+    setIsActive(true);
+    setErrorMessage("");
+    setIsFormOpen(true);
+    setEditingAccount(null);
+  }
+  const handleOpenCreate = () => {
+    setEditingAccount(null);
     setClientId(clients[0]?.id || 0);
     setRIB("RIB");
     setSold(5000); // 5000 initial balance as a nice default
@@ -57,32 +69,64 @@ export default function AccountsPage({
     setIsActive(true);
     setErrorMessage("");
     setIsFormOpen(true);
-  }
-  // const handleOpenCreate = () => {
-  //   //setEditingAccount(null);
-  //   setClientId(clients[0]?.id || 0);
-  //   setRIB("RIB");
-  //   setSold(5000); // 5000 initial balance as a nice default
-  //   setType("COURANT");
-  //   setCurrency("MAD");
-  //   setIsActive(true);
-  //   setErrorMessage("");
-  //   setIsFormOpen(true);
-  // };
+  };
 
-  // const handleOpenEdit = (acc: AccountBanking) => {
-  //   setEditingAccount(acc);
-  //   setClientId(acc.client.id);
-  //   setRIB(acc.RIB);
-  //   setSold(acc.sold);
-  //   setType(acc.type);
-  //   setCurrency(acc.currency);
-  //   setIsActive(acc.isActive);
-  //   setErrorMessage("");
-  //   setIsFormOpen(true);
-  // };
-    const handleSubmit = (e: React.FormEvent)=>{
-      e.preventDefault();
+  const handleOpenEdit = (acc: AccountBanking) => {
+    setEditingAccount(acc);
+    setClientId(acc.client.id);
+    setRIB(acc.RIB);
+    setSold(acc.sold);
+    setType(acc.type);
+    setCurrency(acc.currency);
+    setIsActive(acc.isActive);
+    setErrorMessage("");
+    setIsFormOpen(true);
+  };
+    // const handleSubmit = (e: React.FormEvent)=>{
+    //   e.preventDefault();
+    //   onAddAccount({
+    //     clientId,
+    //     RIB,
+    //     sold,
+    //     type,
+    //     currency,
+    //     isActive,
+    //   });
+    //   setIsFormOpen(false);
+    // }
+    
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clientId) {
+      setErrorMessage("Veuillez sélectionner un client.");
+      return;
+    }
+
+    if (!RIB || RIB.length !== 24) {
+      setErrorMessage("Le RIB doit contenir exactement 24 chiffres.");
+      return;
+    }
+
+    if (sold < 0) {
+      setErrorMessage("Le solde initial ne peut pas être négatif.");
+      return;
+    }
+
+    if (editingAccount) {
+      onUpdateAccount(editingAccount.id, {
+        clientId,
+        RIB,
+        sold, // In practice balance isn't edited directly, but this is a CRUD training MVP
+        type,
+        currency,
+        isActive,
+      });
+    } else{
+      // RIB duplicate check
+      if (accounts.some(a => a.RIB === RIB)) {
+        setErrorMessage("Ce RIB est déjà attribué à un autre compte.");
+        return;
+      }
       onAddAccount({
         clientId,
         RIB,
@@ -91,53 +135,10 @@ export default function AccountsPage({
         currency,
         isActive,
       });
-      setIsFormOpen(false);
     }
-    
-  // const handleSubmit = (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (!clientId) {
-  //     setErrorMessage("Veuillez sélectionner un client.");
-  //     return;
-  //   }
 
-  //   if (!RIB || RIB.length !== 24) {
-  //     setErrorMessage("Le RIB doit contenir exactement 24 chiffres.");
-  //     return;
-  //   }
-
-  //   if (sold < 0) {
-  //     setErrorMessage("Le solde initial ne peut pas être négatif.");
-  //     return;
-  //   }
-
-  //   if (editingAccount) {
-  //     onUpdateAccount(editingAccount.id, {
-  //       clientId,
-  //       RIB,
-  //       sold, // In practice balance isn't edited directly, but this is a CRUD training MVP
-  //       type,
-  //       currency,
-  //       isActive,
-  //     });
-  //   } else{
-  //     // RIB duplicate check
-  //     if (accounts.some(a => a.RIB === RIB)) {
-  //       setErrorMessage("Ce RIB est déjà attribué à un autre compte.");
-  //       return;
-  //     }
-  //     onAddAccount({
-  //       clientId,
-  //       RIB,
-  //       sold,
-  //       type,
-  //       currency,
-  //       isActive,
-  //     });
-  //   }
-
-  //   setIsFormOpen(false);
-  // };
+    setIsFormOpen(false);
+  };
   
   // const getClientID = (id: number) => {
   //   const account = accounts.find(acc => acc.id === id);
@@ -199,26 +200,26 @@ export default function AccountsPage({
       
 
       {/* Filter status card if filtered by Client ID */}
-      {/* // {clientIdFilter !== null && ( */}
-      {/* //   <div className="bg-[#5e6ad2]/10 border border-[#5e6ad2]/25 rounded-xl p-4 flex items-center justify-between" id="accounts-filter-banner">
-      //     <div className="flex items-center gap-2.5">
-      //       <div className="w-8 h-8 rounded-lg bg-[#5e6ad2]/15 flex items-center justify-center text-[#5e6ad2]">
-      //         <Wallet size={16} />
-      //       </div>
-      //       <div>
-      //         <p className="text-xs font-semibold text-[#f7f8f8]">Filtre par Client Actif</p>
-      //         <p className="text-[11px] text-[#8a8f98]">Affichage des comptes bancaires de <span className="text-[#f7f8f8] font-mono">{activeFilterClientName}</span></p>
-      //       </div>
-      //     </div>
-      //     <button */}
-      {/* //       onClick={onClearFilter}
-      //       id="btn-clear-accounts-filter"
-      //       className="text-xs bg-[#383b3f] hover:bg-white/5 text-[#f7f8f8] border border-[#23252a] px-3 py-1.5 rounded-[6px] transition-all"
-      //     >
-      //       Effacer le filtre
-      //     </button>
-      //   </div>
-      // )} */}
+      {clientIdFilter !== null && (
+        <div className="bg-[#5e6ad2]/10 border border-[#5e6ad2]/25 rounded-xl p-4 flex items-center justify-between" id="accounts-filter-banner">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#5e6ad2]/15 flex items-center justify-center text-[#5e6ad2]">
+              <Wallet size={16} />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-[#f7f8f8]">Filtre par Client Actif</p>
+              {/* <p className="text-[11px] text-[#8a8f98]">Affichage des comptes bancaires de <span className="text-[#f7f8f8] font-mono">{activeFilterClientName}</span></p> */}
+            </div>
+          </div>
+          <button 
+            onClick={onClearFilter}
+            id="btn-clear-accounts-filter"
+            className="text-xs bg-[#383b3f] hover:bg-white/5 text-[#f7f8f8] border border-[#23252a] px-3 py-1.5 rounded-[6px] transition-all"
+          >
+            Effacer le filtre
+          </button>
+        </div>
+      )}
 
       {/* Search Toolbar */}
        <div className="flex items-center gap-3 bg-[#161718] p-3 rounded-xl border border-[#23252a]" id="accounts-toolbar">
@@ -245,7 +246,7 @@ export default function AccountsPage({
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#23252a] bg-black/[0.15]">
               <h3 className="text-sm font-[510] text-[#f7f8f8]">
                 Ouvrir un nouveau compte client
-                {/* {editingAccount ? "Modifier le compte" : "Ouvrir un nouveau compte client"} */}
+                {editingAccount ? "Modifier le compte" : "Ouvrir un nouveau compte client"}
               </h3>
               <button
                 onClick={() => setIsFormOpen(false)}
@@ -257,12 +258,12 @@ export default function AccountsPage({
             </div>
 
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
-              {/* {errorMessage && (
+              {errorMessage && (
                 <div className="bg-[#eb5757]/10 border border-[#eb5757]/20 rounded-[6px] p-3 flex items-start gap-2 text-xs text-[#eb5757]">
                   <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
                   <span>{errorMessage}</span>
                 </div>
-               )} */}
+               )}
 
                {/* Client Selector */}
               <div className="space-y-1.5">
@@ -271,7 +272,7 @@ export default function AccountsPage({
                   value={clientId}
                   onChange={(e) => setClientId(Number(e.target.value))}
                   id="form-account-client"
-                  // disabled={!!editingAccount}
+                  disabled={!!editingAccount}
                   className="w-full bg-[#383b3f] text-[#f7f8f8] text-xs px-3 py-2 rounded-[6px] outline-none focus:shadow-focus transition-all disabled:opacity-50"
                   required
                 >
@@ -288,7 +289,7 @@ export default function AccountsPage({
               </div>
 
                {/* RIB Number */}
-      {/*          <div className="space-y-1.5">
+               <div className="space-y-1.5">
                 <div className="flex justify-between">
                   <label className="text-[11px] font-mono font-medium text-[#8a8f98] uppercase">RIB (24 Chiffres)</label>
                   {!editingAccount && ( 
@@ -313,10 +314,10 @@ export default function AccountsPage({
                   className="w-full bg-[#383b3f] text-[#f7f8f8] placeholder-[#62666d] text-xs px-3 py-2 rounded-[6px] outline-none focus:shadow-focus transition-all font-mono tracking-wider disabled:opacity-50"
                   required
                 />
-               </div> */}
+               </div>
 
                {/* Account Type and Currency */}
-      {/*          <div className="grid grid-cols-2 gap-3">
+               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="block text-[11px] font-mono font-medium text-[#8a8f98] uppercase">Type de compte</label>
                   <select
@@ -328,9 +329,9 @@ export default function AccountsPage({
                     <option value="COURANT">COURANT</option>
                     <option value="EPARGNE">ÉPARGNE</option>
                   </select>
-                 </div> */}
+                 </div>
 
-      {/*            <div className="space-y-1.5">
+                 <div className="space-y-1.5">
                   <label className="block text-[11px] font-mono font-medium text-[#8a8f98] uppercase">Devise</label>
                   <select
                     value={currency}
@@ -344,10 +345,10 @@ export default function AccountsPage({
                     <option value="USD">USD (Dollar)</option>
                   </select>
                 </div>
-               </div> */}
+               </div>
 
                {/* Initial Sold (Balance) */}
-      {/*          <div className="space-y-1.5">
+               <div className="space-y-1.5">
                 <label className="block text-[11px] font-mono font-medium text-[#8a8f98] uppercase">
                   {editingAccount ? "Solde actuel (Lecture seule)" : "Solde Initial (Fonds)"}
                 </label>
@@ -361,10 +362,10 @@ export default function AccountsPage({
                   className="w-full bg-[#383b3f] text-[#f7f8f8] placeholder-[#62666d] text-xs px-3 py-2 rounded-[6px] outline-none focus:shadow-focus transition-all font-mono disabled:opacity-50"
                   required
                 />
-               </div> */}
+               </div>
 
                {/* Status toggle */}
-      {/*          <div className="flex items-center justify-between py-2 border-t border-[#23252a]">
+               <div className="flex items-center justify-between py-2 border-t border-[#23252a]">
                 <div>
                   <span className="block text-xs font-medium text-[#f7f8f8]">Statut d'Activité</span>
                   <span className="block text-[10px] text-[#8a8f98]">Autoriser les débits et crédits sur ce compte</span>
@@ -381,10 +382,10 @@ export default function AccountsPage({
                     isActive ? "translate-x-4.5" : "translate-x-0"
                   }`} />
                 </button>
-               </div> */}
+               </div>
 
                {/* Form Buttons */}
-      {/*          <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#23252a]">
+               <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#23252a]">
                 <button
                   type="button"
                   id="form-account-btn-cancel"
@@ -400,7 +401,7 @@ export default function AccountsPage({
                 >
                   {editingAccount ? "Enregistrer" : "Créer le compte"}
                 </button>
-              </div>*/} 
+              </div> 
             </form>
           </div>
         </div>
@@ -482,7 +483,7 @@ export default function AccountsPage({
 
                       {/* Edit account details */}
                       <button
-                        //onClick={() => handleOpenEdit(account)}
+                        onClick={() => handleOpenEdit(account)}
                         id={`btn-edit-account-${account.id}`}
                         className="p-1.5 text-[#8a8f98] hover:text-[#f7f8f8] hover:bg-white/5 rounded-[4px] transition-all"
                         title="Modifier le compte"
@@ -492,7 +493,7 @@ export default function AccountsPage({
 
                       {/* Delete account */}
                       <button
-                        //onClick={() => onDeleteAccount(account.id)}
+                        onClick={() => onDeleteAccount(account.id)}
                         id={`btn-delete-account-${account.id}`}
                         className="p-1.5 text-[#eb5757]/70 hover:text-[#eb5757] hover:bg-[#eb5757]/10 rounded-[4px] transition-all"
                         title="Fermer et supprimer le compte"
