@@ -24,17 +24,22 @@ export default function DashboardOverview({
   const activeCards = cards.filter(c => c.isActive).length;
 
   // Calculate totals by currency
-  const balanceByCurrency = accounts.reduce((acc, curr) => {
-    if (curr.isActive) {
-      acc[curr.currency] = (acc[curr.currency] || 0) + curr.sold;
+
+  const balanceByCurrency = accounts.reduce((acc , currAcc)=>{
+    if(currAcc.isActive){
+      acc[currAcc.currency] = (acc[currAcc.currency] || 0) + currAcc.sold;
     }
     return acc;
-  }, {} as Record<string, number>);
+  } , {} as Record<string  ,number>);
+
+
+  
+
 
   // Get recent 5 transactions
   const recentTransactions = [...transactions]
     .sort((a, b) => new Date(b.dateOperation).getTime() - new Date(a.dateOperation).getTime())
-    .slice(0, 5);
+    .slice(0, 7);
 
   const getAccountRIB = (id: number) => {
     const acc = accounts.find(a => a.id === id);
@@ -44,7 +49,7 @@ export default function DashboardOverview({
   const getClientNameByAccountId = (id: number) => {
     const acc = accounts.find(a => a.id === id);
     if (!acc) return "Inconnu";
-    const client = clients.find(c => c.id === acc.clientId);
+    const client = clients.find(c => c.id === acc.client.id);
     return client ? client.name : "Inconnu";
   };
 
@@ -166,7 +171,7 @@ export default function DashboardOverview({
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             {accounts.slice(0, 4).map((account) => {
-              const clientName = clients.find(c => c.id === account.clientId)?.name || "Client";
+              const clientName = clients.find(c => c.id === account.client.id)?.name || "Client";
               return (
                 <div
                   key={account.id}
@@ -183,18 +188,18 @@ export default function DashboardOverview({
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <button
-                      onClick={() => onQuickDeposit(account.id, 1000)}
+                      onClick={() => onQuickDeposit(account.id, 1000 , "DEPOT")}
                       id={`btn-quick-dep-1000-${account.id}`}
                       className="bg-[#27a644]/10 hover:bg-[#27a644]/20 text-[#27a644] text-[10px] font-mono px-2 py-1 rounded border border-[#27a644]/20 transition-all"
                     >
                       +1k {account.currency}
                     </button>
                     <button
-                      onClick={() => onQuickDeposit(account.id, 5000)}
+                      onClick={() => onQuickDeposit(account.id, 1000 , "RETRAIT")}
                       id={`btn-quick-dep-5000-${account.id}`}
                       className="bg-[#27a644]/10 hover:bg-[#27a644]/20 text-[#27a644] text-[10px] font-mono px-2 py-1 rounded border border-[#27a644]/20 transition-all"
                     >
-                      +5k {account.currency}
+                      -1k {account.currency}
                     </button>
                   </div>
                 </div>
@@ -237,8 +242,8 @@ export default function DashboardOverview({
             </thead>
             <tbody>
               {recentTransactions.map((tx) => {
-                const desAccount = accounts.find(a => a.id === tx.accountBankingDesId);
-                const srcAccount = tx.accountBankingSrcId ? accounts.find(a => a.id === tx.accountBankingSrcId) : null;
+                const desAccount = accounts.find(a => a.id === tx.accountBankingDes.id);
+                const srcAccount = tx.accountBankingSrc ? accounts.find(a => a.id === tx.accountBankingSrc?.id) : null;
                 const currency = desAccount?.currency || "MAD";
 
                 return (
@@ -267,14 +272,14 @@ export default function DashboardOverview({
                     </td>
                     <td className="p-3 text-xs">
                       <div className="flex flex-col">
-                        <span className="text-[#f7f8f8]">{getClientNameByAccountId(tx.accountBankingDesId)}</span>
-                        <span className="font-mono text-[10px] text-[#62666d]">{getAccountRIB(tx.accountBankingDesId)}</span>
+                        <span className="text-[#f7f8f8]">{getClientNameByAccountId(tx.accountBankingDes.id)}</span>
+                        <span className="font-mono text-[10px] text-[#62666d]">{getAccountRIB(tx.accountBankingDes.id)}</span>
                       </div>
                     </td>
                     <td className="p-3 text-xs text-[#8a8f98]">
                       {srcAccount ? (
                         <div className="flex flex-col">
-                          <span className="text-[#f7f8f8]">{getClientNameByAccountId(tx.accountBankingSrcId!)}</span>
+                          <span className="text-[#f7f8f8]">{getClientNameByAccountId(tx.accountBankingSrc.id)}</span>
                           <span className="font-mono text-[10px] text-[#62666d]">{srcAccount.RIB}</span>
                         </div>
                       ) : (
