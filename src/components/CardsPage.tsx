@@ -181,7 +181,7 @@ export default function CardsPage({
       </div>
 
       {/* Filter banner if active */}
-      {accountIdFilter !== null && (
+      {/* {accountIdFilter !== null && (
         <div className="bg-[#5e6ad2]/10 border border-[#5e6ad2]/25 rounded-xl p-4 flex items-center justify-between" id="cards-filter-banner">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-[#5e6ad2]/15 flex items-center justify-center text-[#5e6ad2]">
@@ -200,7 +200,7 @@ export default function CardsPage({
             Effacer le filtre
           </button>
         </div>
-      )}
+      )} */}
 
       {/* Search Toolbar */}
       <div className="flex items-center gap-3 bg-[#161718] p-3 rounded-xl border border-[#23252a]" id="cards-toolbar">

@@ -1,5 +1,18 @@
 import { Client, AccountBanking, CardBanking, Transaction } from "./types";
 
+
+export const mockDailyStats = Array.from({ length: 20 }, (_, i) => {
+  const date = new Date();
+  date.setDate(date.getDate() - (19 - i));
+  return {
+    date: date.toISOString().split('T')[0], // "2026-08-15" — même format que LocalDate sérialisé
+    depot: Math.floor(Math.random() * 30) + 10,
+    retrait: Math.floor(Math.random() * 30) + 10,
+    virement: Math.floor(Math.random() * 30) + 10,
+  };
+});
+
+
 export const INITIAL_CLIENTS: Client[] = [
   {
     id: 1,

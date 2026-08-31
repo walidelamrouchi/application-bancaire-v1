@@ -11,14 +11,16 @@ interface ClientsPageProps {
   clients: Client[];
   onAddClient: (client: Omit<Client, "id" | "dateCreation">) => void;
   onUpdateClient: (id: number, client: Client) => void;
-  onViewAccounts: (clientId: number) => void;
+ // onViewAccounts: (clientId: number) => void;
+  onDeleteClient: (id: number) => void;
 }
 
 export default function ClientsPage({
   clients,
   onAddClient,
   onUpdateClient,
-  onViewAccounts,
+ // onViewAccounts,
+  onDeleteClient
 }: ClientsPageProps) {
   const [search, setSearch] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -282,7 +284,7 @@ export default function ClientsPage({
                   <td className="p-3 text-xs text-[#8a8f98]">{client.email}</td>
                   <td className="p-3 text-xs text-[#8a8f98] font-mono">{client.phoneNumber}</td>
                   <td className="p-3 text-xs text-[#62666d]">
-                    {new Date(client.dateCreate).toLocaleDateString("fr-FR")}
+                    {client.dateCreate ? `${client.dateCreate.slice(0, 10)}` : "MM/YY/DD"}
                   </td>
                   <td className="p-3">
                     {client.isActive ? (
@@ -301,7 +303,7 @@ export default function ClientsPage({
                     <div className="flex items-center justify-end gap-1.5">
                       {/* View Accounts Shortcut */}
                       <button
-                        onClick={() => onViewAccounts(client.id)}
+                        //onClick={() => onViewAccounts(client.id)}
                         id={`btn-view-acc-shortcut-${client.id}`}
                         className="p-1.5 text-[#8a8f98] hover:text-[#5e6ad2] hover:bg-[#5e6ad2]/10 rounded-[4px] transition-all"
                         title="Consulter les comptes bancaires"
@@ -319,15 +321,15 @@ export default function ClientsPage({
                         <Edit2 size={14} />
                       </button>
 
-                      {/* Delete button 
+                      {/* Delete button */}
                       <button
-                        onClick={() => deleteClient(client.id)}
+                        onClick={()=> onDeleteClient(client.id)}
                         id={`btn-delete-client-${client.id}`}
                         className="p-1.5 text-[#eb5757]/70 hover:text-[#eb5757] hover:bg-[#eb5757]/10 rounded-[4px] transition-all"
                         title="Supprimer définitivement"
                       >
                         <Trash2 size={14} />
-                      </button>*/}
+                      </button>
                     </div>
                   </td>
                 </tr>

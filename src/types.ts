@@ -11,6 +11,7 @@ export interface Client {
   phoneNumber: string;
   // ISO String
   isActive: boolean;
+  dateCreate: string;
 }
 
 export interface AccountBanking {
@@ -26,7 +27,7 @@ export interface AccountBanking {
 // Ce que le formulaire ENVOIE au backend (création/modification)
 
   export interface AccountBankingRequest {
-    clientId: number;
+    client: {id : number}; // envoie l'id du client lié, pas l'objet complet
     RIB: string;
     sold: number;
     type: "COURANT" | "EPARGNE";
@@ -69,4 +70,10 @@ export interface TransactionRequest {
   isValid: boolean;
   accountBankingDes: {id : number}; // Destination Account ID (all transactions have this)
   accountBankingSrc?: {id : number}; // Source Account ID (only used for transfers/VIREMENT)
+}
+export interface DailyTransactionStats {
+  date: string;   // Jackson sérialise LocalDate en "2024-01-15"
+  depot: number;
+  retrait: number;
+  virement: number;
 }
