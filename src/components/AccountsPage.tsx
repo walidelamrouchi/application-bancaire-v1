@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Client, AccountBanking, AccountBankingRequest } from "../types";
 import { Search, Plus, Edit2, Trash2, X, CreditCard, ArrowLeftRight, Wallet, AlertCircle } from "lucide-react"; 
-import { getAllAccounts  ,getAccountById , updateAccount , createAccount , searchAccounts , deleteAccount } from "../api/accountApi";
-
 interface AccountsPageProps {
   accounts: AccountBanking[];
   clients: Client[];
     clientIdFilter: number | null;
     onClearFilter: () => void;
     onAddAccount: (account: AccountBankingRequest) => void;
-    onUpdateAccount: (id: number, account: AccountBankingRequest) => AccountBanking;
+    onUpdateAccount: (id: number, account: AccountBankingRequest) => void;
     onDeleteAccount: (id: number) => void;
     // onViewCards: (accountId: number) => void;
     // onViewTransactions: (accountId: number) => void;
@@ -59,17 +57,17 @@ export default function AccountsPage({
     setIsFormOpen(true);
     setEditingAccount(null);
   }
-  const handleOpenCreate = () => {
-    setEditingAccount(null);
-    setClientId(clients[0]?.id || 0);
-    setRIB("RIB");
-    setSold(5000); // 5000 initial balance as a nice default
-    setType("COURANT");
-    setCurrency("MAD");
-    setIsActive(true);
-    setErrorMessage("");
-    setIsFormOpen(true);
-  };
+  // const handleOpenCreate = () => {
+  //   setEditingAccount(null);
+  //   setClientId(clients[0]?.id || 0);
+  //   setRIB("RIB");
+  //   setSold(5000); // 5000 initial balance as a nice default
+  //   setType("COURANT");
+  //   setCurrency("MAD");
+  //   setIsActive(true);
+  //   setErrorMessage("");
+  //   setIsFormOpen(true);
+  // };
 
   const handleOpenEdit = (acc: AccountBanking) => {
     setEditingAccount(acc);
@@ -82,19 +80,7 @@ export default function AccountsPage({
     setErrorMessage("");
     setIsFormOpen(true);
   };
-    // const handleSubmit = (e: React.FormEvent)=>{
-    //   e.preventDefault();
-    //   onAddAccount({
-    //     clientId,
-    //     RIB,
-    //     sold,
-    //     type,
-    //     currency,
-    //     isActive,
-    //   });
-    //   setIsFormOpen(false);
-    // }
-    
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId) {
@@ -114,7 +100,7 @@ export default function AccountsPage({
 
     if (editingAccount) {
       onUpdateAccount(editingAccount.id, {
-        clientId,
+        client : {id : clientId},
         RIB,
         sold, // In practice balance isn't edited directly, but this is a CRUD training MVP
         type,
@@ -128,7 +114,7 @@ export default function AccountsPage({
         return;
       }
       onAddAccount({
-        clientId,
+        client : {id : clientId},
         RIB,
         sold,
         type,
@@ -140,20 +126,12 @@ export default function AccountsPage({
     setIsFormOpen(false);
   };
   
-  // const getClientID = (id: number) => {
-  //   const account = accounts.find(acc => acc.id === id);
-  //   return account ? account.client.id : "inconnu";
-  // };
-  // const getClientName = (id: number) => {
-  //   const client = clients.find((c) => c.id === id);
-  //   return client ? client.name : "Inconnu";
-  // };
-  // console.log("AccountsPage Rendered with accounts:", accounts);
-  // console.log("AccountsPage Rendered with clients:", clients);
-  // console.log("client of account id 1:", getClientID(1));
-  
+
   // Filter & Search Logic
   const filteredAccounts = accounts.filter(acc=>{
+    if (clientIdFilter !== null && acc.client.id !== clientIdFilter) {
+      return false;
+    }
     const matchesSearch = 
       acc.RIB.includes(search) || 
       acc.type.toLowerCase().includes(search.toLowerCase()) || 
@@ -178,7 +156,7 @@ export default function AccountsPage({
   //   return matchesSearch;
   // });
 
-  //const activeFilterClientName = clientIdFilter !== null ? clients.find(c => c.id === clientIdFilter)?.name : "";
+  const activeFilterClientName = clientIdFilter !== null ? clients.find(c => c.id === clientIdFilter)?.name : "";
 
   return (
     <div className="space-y-6 animate-fade-in" id="accounts-crud-page">
@@ -270,7 +248,10 @@ export default function AccountsPage({
                 <label className="block text-[11px] font-mono font-medium text-[#8a8f98] uppercase">Titulaire (Client)</label>
                 <select 
                   value={clientId}
-                  onChange={(e) => setClientId(Number(e.target.value))}
+                  onChange={(e) => {
+                    setClientId(Number(e.target.value))
+                    console.log("Selected clientId:", e.target.value)
+                  }}
                   id="form-account-client"
                   disabled={!!editingAccount}
                   className="w-full bg-[#383b3f] text-[#f7f8f8] text-xs px-3 py-2 rounded-[6px] outline-none focus:shadow-focus transition-all disabled:opacity-50"
@@ -423,7 +404,7 @@ export default function AccountsPage({
               </tr>
             </thead>
             <tbody>
-              {accounts.map((account) => (
+              {filteredAccounts.map((account) => (
                 <tr key={account.id} className="border-b border-[#23252a] last:border-0 hover:bg-white/[0.01] transition-colors" id={`account-row-${account.id}`}>
                   <td className="p-3">
                     <span className="font-mono text-xs font-semibold text-[#8a8f98] block tracking-wide">{account.RIB}</span>
@@ -444,7 +425,7 @@ export default function AccountsPage({
                     </span>
                   </td>
                   <td className="p-3 text-xs text-[#62666d]">
-                    {new Date(account.dateCreate).toLocaleDateString("fr-FR")}
+                    {account.dateCreate ? `${account.dateCreate.slice(0, 10)}` : "MM/YY/DD"}
                   </td>
                   <td className="p-3">
                     {account.isActive ? (

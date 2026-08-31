@@ -1,5 +1,15 @@
-import { Client, AccountBanking, CardBanking, Transaction } from "../types";
+import { Client, AccountBanking, CardBanking, Transaction, DailyTransactionStats } from "../types";
 import { Users, Wallet, CreditCard, ArrowUpRight, ArrowDownLeft, Plus, DollarSign } from "lucide-react";
+import  {LineChart} from "@/components/charts/line-chart";
+import {  XAxis } from "@/components/charts/x-axis";
+import { ChartTooltip } from "@/components/charts/tooltip";
+import { Grid} from "@/components/charts/grid";
+import { Line } from "@/components/charts/line";
+import { curveNatural } from "@visx/curve";
+
+import { useState, useEffect } from "react";
+import { getDailyStats } from "../api/transactionApi";
+
 
 interface DashboardOverviewProps {
   clients: Client[];
@@ -7,7 +17,6 @@ interface DashboardOverviewProps {
   cards: CardBanking[];
   transactions: Transaction[];
   onNavigate: (tab: string) => void;
-  onQuickDeposit: (accountId: number, amount: number) => void;
 }
 
 export default function DashboardOverview({
@@ -16,7 +25,7 @@ export default function DashboardOverview({
   cards,
   transactions,
   onNavigate,
-  onQuickDeposit,
+  
 }: DashboardOverviewProps) {
   // Aggregate Stats
   const activeClients = clients.filter(c => c.isActive).length;
@@ -33,13 +42,30 @@ export default function DashboardOverview({
   } , {} as Record<string  ,number>);
 
 
-  
+  const [chartData, setChartData] = useState<DailyTransactionStats[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    getDailyStats(9)
+        .then((data: DailyTransactionStats[]) => {
+
+          setChartData(data.map(d => ({
+            date: new Date(d.date),
+            depot: d.depot,
+            retrait: d.retrait,
+            virement: d.virement
+          })));
+      }).finally(() => setLoading(false));
+    } , []);
+      
+
+  
+console.log("stats" , chartData);
 
   // Get recent 5 transactions
   const recentTransactions = [...transactions]
     .sort((a, b) => new Date(b.dateOperation).getTime() - new Date(a.dateOperation).getTime())
-    .slice(0, 7);
+    .slice(0, 4);
 
   const getAccountRIB = (id: number) => {
     const acc = accounts.find(a => a.id === id);
@@ -162,55 +188,23 @@ export default function DashboardOverview({
           </div>
         </div>
 
-        {/* Quick Testing Actions / Training Shortcut */}
-        <div className="bg-[#161718] rounded-xl border border-[#23252a] p-5 space-y-4 lg:col-span-2" id="dashboard-quick-actions-card">
-          <div>
-            <h3 className="text-sm font-[510] text-[#f7f8f8] tracking-tight">Raccourcis de Test & Simulation</h3>
-            <p className="text-[11px] text-[#8a8f98]">Simuler des crédits instantanés pour tester la réactivité du solde</p>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            {accounts.slice(0, 4).map((account) => {
-              const clientName = clients.find(c => c.id === account.client.id)?.name || "Client";
-              return (
-                <div
-                  key={account.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-[#23252a] hover:border-[#323334] transition-all"
-                >
-                  <div className="space-y-0.5">
-                    <p className="text-xs font-medium text-[#f7f8f8]">{clientName}</p>
-                    <p className="text-[10px] font-mono text-[#8a8f98]">
-                      {account.RIB.slice(0, 4)}...{account.RIB.slice(-4)} ({account.type})
-                    </p>
-                    <p className="text-[11px] font-mono text-[#27a644] font-semibold">
-                      {account.sold.toLocaleString("fr-FR")} {account.currency}
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <button
-                      onClick={() => onQuickDeposit(account.id, 1000 , "DEPOT")}
-                      id={`btn-quick-dep-1000-${account.id}`}
-                      className="bg-[#27a644]/10 hover:bg-[#27a644]/20 text-[#27a644] text-[10px] font-mono px-2 py-1 rounded border border-[#27a644]/20 transition-all"
-                    >
-                      +1k {account.currency}
-                    </button>
-                    <button
-                      onClick={() => onQuickDeposit(account.id, 1000 , "RETRAIT")}
-                      id={`btn-quick-dep-5000-${account.id}`}
-                      className="bg-[#27a644]/10 hover:bg-[#27a644]/20 text-[#27a644] text-[10px] font-mono px-2 py-1 rounded border border-[#27a644]/20 transition-all"
-                    >
-                      -1k {account.currency}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            {accounts.length === 0 && (
-              <p className="text-xs text-[#62666d] italic col-span-2 py-4 text-center">Aucun compte ouvert pour la simulation de dépôt</p>
-            )}
-          </div>
+       
+        {/* {chart} */}
+        
+        <div className=" rounded-xl p-2 space-y-4 lg:col-span-2" id="dashboard-daily-stats-card">
+          {!loading && (
+          <LineChart data={chartData}
+          animationDuration={1100}
+          animationEasing="cubic-bezier(0.34, 1.56, 0.64, 1)">
+          <Grid horizontal />
+          <Line dataKey="depot" curve={curveNatural} strokeWidth={2} fadeEdges showHighlight />
+          <Line dataKey="retrait" stroke="var(--chart-2)" curve={curveNatural} strokeWidth={2} fadeEdges showHighlight />
+          <Line dataKey="virement" stroke="var(--chart-3)" curve={curveNatural} strokeWidth={2} fadeEdges showHighlight />
+          <XAxis />
+          <ChartTooltip />
+        </LineChart>)}
         </div>
-      </div>
+      </div> 
 
       {/* Recent Ledger Postings */}
       <div className="bg-[#161718] rounded-xl border border-[#23252a] overflow-hidden" id="dashboard-recent-transactions">

@@ -6,7 +6,7 @@ Application de gestion bancaire full-stack, développée comme projet portfolio 
  
 - **Backend** : Spring Boot
 - **DataBase** : PostgreSQL
-- **Frontend** : React, Vite, TypeScript, Tailwind CSS
+- **Frontend** : React, Vite, TypeScript, Tailwind CSS, shadcn
 ## Fonctionnalités
  
 - Gestion des clients
@@ -14,7 +14,11 @@ Application de gestion bancaire full-stack, développée comme projet portfolio 
 - Gestion des cartes bancaires
 - Gestion des transactions (dépôt, retrait, virement)
 
+### Fonctionnalités  comming in soon
+- archive data of client
+- interface of details for each features
 ## Statut
  mvp 
 🚧 Projet en cours de développement.
+
  
